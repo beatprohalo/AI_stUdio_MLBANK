@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import FileUploadCard from './components/FileUploadCard';
 import GenerationCard from './components/GenerationCard';
 import LearningSystemCard from './components/LearningSystemCard';
@@ -9,30 +8,35 @@ import PreferencesModal from './components/PreferencesModal';
 import SessionLibraryCard from './components/SessionLibraryCard';
 import StatusPanelCard from './components/StatusPanelCard';
 import { useLearningSystem } from './hooks/useLearningSystem';
-import type { AnalysisResult, MidiGenerationResult, FeedbackAction, LibraryItem, SnippetAnalysisResult } from './types';
+import { testConnection } from './services/geminiService';
+import type { AnalysisResult, MidiGenerationResult, FeedbackAction, LibraryItem, SnippetAnalysisResult, ApiConfig } from './types';
 
 const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
-  const [aiCoreModel, setAiCoreModel] = useState<string>('gemini-2.5-flash');
-  const [gpuAcceleration, setGpuAcceleration] = useState(false);
-  const [cpuCores, setCpuCores] = useState('auto');
+  const [apiConfig, setApiConfig] = useState<ApiConfig>({ apiKey: '', endpoint: 'google' });
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'failure'>('unknown');
+
   const learningSystem = useLearningSystem();
 
+  const handleTestConnection = useCallback(async () => {
+    const success = await testConnection(apiConfig);
+    setConnectionStatus(success ? 'success' : 'failure');
+  }, [apiConfig]);
+
   const handleFeedback = (result: MidiGenerationResult, action: FeedbackAction) => {
-    // The description from the AI is the best source for keywords to learn from.
     learningSystem.handleFeedback(result.description, action);
   };
 
   const handleAnalysisComplete = (result: AnalysisResult, fileName: string) => {
-    // Duplicate detection using fingerprint
     const existingItem = libraryItems.find(item => 
       item.type === 'analysis' && item.result.fingerprint === result.fingerprint
     );
     if (existingItem) {
       alert(`Duplicate Sample Detected\n\nThis file appears to be identical to "${existingItem.name}" which is already in your session library.`);
+      return;
     }
 
     setAnalysisResult(result);
@@ -77,12 +81,10 @@ const App: React.FC = () => {
             sessionFileCount={libraryItems.length}
             lastActivity={lastActivity}
             learningStatus={learningSystem.isEnabled}
-            aiCoreModel={aiCoreModel}
-            onModelChange={setAiCoreModel}
-            gpuAcceleration={gpuAcceleration}
-            onGpuToggle={() => setGpuAcceleration(prev => !prev)}
-            cpuCores={cpuCores}
-            onCpuCoresChange={setCpuCores}
+            apiConfig={apiConfig}
+            onApiConfigChange={setApiConfig}
+            connectionStatus={connectionStatus}
+            onTestConnection={handleTestConnection}
           />
 
           <LearningSystemCard 
@@ -102,6 +104,7 @@ const App: React.FC = () => {
           <FileUploadCard 
             onAnalysisComplete={handleAnalysisComplete}
             analysisResult={analysisResult} 
+            apiConfig={apiConfig}
           />
           
           <RealtimeAnalysisCard 
@@ -115,6 +118,7 @@ const App: React.FC = () => {
             preferences={learningSystem.preferences}
             onFeedback={handleFeedback}
             onGenerationComplete={handleGenerationComplete}
+            apiConfig={apiConfig}
           />
           
           <SessionLibraryCard items={libraryItems} analysisResult={analysisResult} />

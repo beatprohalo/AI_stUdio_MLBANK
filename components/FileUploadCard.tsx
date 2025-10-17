@@ -1,15 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import { analyzeAudioFile } from '../services/geminiService';
-import type { AnalysisResult } from '../types';
+import type { AnalysisResult, ApiConfig } from '../types';
 import { LoadingSpinner, UploadIcon } from './icons';
 import AnalysisCharts from './AnalysisCharts';
 
 interface FileUploadCardProps {
   onAnalysisComplete: (result: AnalysisResult, fileName: string) => void;
   analysisResult: AnalysisResult | null;
+  apiConfig: ApiConfig;
 }
 
-const FileUploadCard: React.FC<FileUploadCardProps> = ({ onAnalysisComplete, analysisResult }) => {
+const FileUploadCard: React.FC<FileUploadCardProps> = ({ onAnalysisComplete, analysisResult, apiConfig }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +29,7 @@ const FileUploadCard: React.FC<FileUploadCardProps> = ({ onAnalysisComplete, ana
     setIsLoading(true);
     setError(null);
     try {
-      const result = await analyzeAudioFile(file.name);
+      const result = await analyzeAudioFile(file.name, apiConfig);
       onAnalysisComplete(result, file.name);
     } catch (err) {
       setError('Failed to analyze file. Please try again.');
@@ -36,7 +37,7 @@ const FileUploadCard: React.FC<FileUploadCardProps> = ({ onAnalysisComplete, ana
     } finally {
       setIsLoading(false);
     }
-  }, [file, onAnalysisComplete]);
+  }, [file, onAnalysisComplete, apiConfig]);
 
   return (
     <div className="bg-surface border border-surface-border rounded-lg p-6 mb-6 shadow-lg">
