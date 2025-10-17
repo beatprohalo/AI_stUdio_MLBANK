@@ -97,3 +97,10 @@ export interface GeneratedLibraryItem extends BaseLibraryItem {
 }
 
 export type LibraryItem = AnalyzedLibraryItem | GeneratedLibraryItem;
+
+// --- API Configuration ---
+
+export interface ApiConfig {
+  apiKey: string;
+  endpoint: string; // "google" for Gemini API, or a custom URL for a local LLM
+}

@@ -1,15 +1,16 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useRealtimeAnalysis } from '../hooks/useRealtimeAnalysis';
 import { analyzeRecordedSnippet } from '../services/geminiService';
-import type { SnippetAnalysisResult } from '../types';
+import type { SnippetAnalysisResult, ApiConfig } from '../types';
 import { MicrophoneIcon, StopIcon, LoadingSpinner, BrainCircuitIcon, ArrowPathRoundedSquareIcon } from './icons';
 
 interface RealtimeAnalysisCardProps {
   onLearn: (result: SnippetAnalysisResult) => void;
   isEnabled: boolean;
+  apiConfig: ApiConfig;
 }
 
-const RealtimeAnalysisCard: React.FC<RealtimeAnalysisCardProps> = ({ onLearn, isEnabled }) => {
+const RealtimeAnalysisCard: React.FC<RealtimeAnalysisCardProps> = ({ onLearn, isEnabled, apiConfig }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isRecording, recordedBlob, recordingTime, error, startRecording, stopRecording, reset } = useRealtimeAnalysis(canvasRef);
   
@@ -27,7 +28,7 @@ const RealtimeAnalysisCard: React.FC<RealtimeAnalysisCardProps> = ({ onLearn, is
         try {
           // We can't actually get the duration from a blob easily without loading it into an audio element.
           // Since this is a simulation, we'll just use the recordingTime.
-          const result = await analyzeRecordedSnippet(recordingTime, contentType);
+          const result = await analyzeRecordedSnippet(recordingTime, contentType, apiConfig);
           setAnalysisResult(result);
         } catch (err) {
           console.error("Analysis failed:", err);
@@ -38,7 +39,7 @@ const RealtimeAnalysisCard: React.FC<RealtimeAnalysisCardProps> = ({ onLearn, is
       };
       analyze();
     }
-  }, [recordedBlob, recordingTime, contentType]);
+  }, [recordedBlob, recordingTime, contentType, apiConfig]);
 
   const handleLearn = () => {
     if (analysisResult) {

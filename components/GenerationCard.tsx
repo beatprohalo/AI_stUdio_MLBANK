@@ -1,11 +1,9 @@
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { generateMidi, generateAudio } from '../services/geminiService';
 import { generateFilename } from '../services/autoNamingService';
 import { createMidiBlob } from '../services/midiService';
 import { GenerationModel, FeedbackAction } from '../types';
-import type { MidiGenerationResult, AnalysisResult, LearnedPreferences } from '../types';
+import type { MidiGenerationResult, AnalysisResult, LearnedPreferences, ApiConfig } from '../types';
 import { LoadingSpinner, PlayIcon, DownloadIcon } from './icons';
 import FeedbackButtons from './FeedbackButtons';
 
@@ -46,9 +44,10 @@ interface GenerationCardProps {
   preferences: LearnedPreferences | null;
   onFeedback: (result: MidiGenerationResult, action: FeedbackAction) => void;
   onGenerationComplete: (result: MidiGenerationResult, prompt: string) => void;
+  apiConfig: ApiConfig;
 }
 
-const GenerationCard: React.FC<GenerationCardProps> = ({ analysisResult, learningIsEnabled, preferences, onFeedback, onGenerationComplete }) => {
+const GenerationCard: React.FC<GenerationCardProps> = ({ analysisResult, learningIsEnabled, preferences, onFeedback, onGenerationComplete, apiConfig }) => {
   const [prompt, setPrompt] = useState('');
   const [model, setModel] = useState<GenerationModel>(GenerationModel.MIDI);
   const [isLoading, setIsLoading] = useState(false);
@@ -162,12 +161,12 @@ const GenerationCard: React.FC<GenerationCardProps> = ({ analysisResult, learnin
 
     try {
       if (model === GenerationModel.MIDI) {
-        const result = await generateMidi(prompt, analysisResult?.bpm, learningIsEnabled ? preferences ?? undefined : undefined);
+        const result = await generateMidi(prompt, apiConfig, analysisResult?.bpm, learningIsEnabled ? preferences ?? undefined : undefined);
         setMidiResult(result);
         setShowFeedback(true);
         onGenerationComplete(result, prompt);
       } else {
-        const base64Audio = await generateAudio(prompt, learningIsEnabled ? preferences ?? undefined : undefined);
+        const base64Audio = await generateAudio(prompt, apiConfig, learningIsEnabled ? preferences ?? undefined : undefined);
         const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
         const decodedBytes = decode(base64Audio);
         const buffer = await decodeAudioData(decodedBytes, outputAudioContext, 24000, 1);
@@ -179,7 +178,7 @@ const GenerationCard: React.FC<GenerationCardProps> = ({ analysisResult, learnin
     } finally {
       setIsLoading(false);
     }
-  }, [prompt, model, analysisResult, learningIsEnabled, preferences, onFeedback, midiResult, onGenerationComplete]);
+  }, [prompt, model, analysisResult, learningIsEnabled, preferences, onFeedback, midiResult, onGenerationComplete, apiConfig]);
 
   const handleFeedbackAction = (action: FeedbackAction) => {
     if (midiResult && learningIsEnabled) {

@@ -1,14 +1,5 @@
-// Fix: Import Modality enum for use in generateAudio config.
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import type { AnalysisResult, MidiGenerationResult, LearnedPreferences, SnippetAnalysisResult } from '../types';
-
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+import type { ApiConfig, AnalysisResult, MidiGenerationResult, LearnedPreferences, SnippetAnalysisResult } from '../types';
 
 const analysisSchema = {
   type: Type.OBJECT,
@@ -68,8 +59,51 @@ const midiGenerationSchema = {
     required: ["description", "tracks"]
 };
 
+const callLocalLlm = async (prompt: string, schema: any, apiKey: string, endpoint: string) => {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'local-model', // Model name is often ignored by local servers
+      prompt: prompt,
+      schema: schema,
+      stream: false
+    })
+  });
 
-export const analyzeAudioFile = async (fileName: string): Promise<AnalysisResult> => {
+  if (!response.ok) {
+    throw new Error(`Local LLM API error: ${response.statusText}`);
+  }
+
+  const json = await response.json();
+  // Local LLMs might return the JSON directly in a `data` or `response` field
+  return json.data || json.response || json;
+};
+
+export const testConnection = async (config: ApiConfig): Promise<boolean> => {
+  try {
+    if (config.endpoint === 'google') {
+      const ai = new GoogleGenAI({ apiKey: config.apiKey });
+      // A simple, non-streaming call to a lightweight model to test credentials
+      await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: 'test' });
+    } else {
+      // For local LLMs, we can often hit a /v1/models endpoint or similar
+      const response = await fetch(config.endpoint.replace('/v1/chat/completions', '/v1/models'), {
+        headers: { 'Authorization': `Bearer ${config.apiKey}` }
+      });
+      if (!response.ok) throw new Error('Failed to connect to local LLM');
+    }
+    return true;
+  } catch (error) {
+    console.error("Connection test failed:", error);
+    return false;
+  }
+};
+
+export const analyzeAudioFile = async (fileName: string, config: ApiConfig): Promise<AnalysisResult> => {
   const prompt = `You are an expert audio engineer with perfect pitch and deep musical knowledge. You have just listened to an audio file named "${fileName}". Your task is to provide a detailed analysis of its actual musical content, not just what's implied by the filename.
   
 Provide the analysis in JSON format.
@@ -84,18 +118,24 @@ Generate the following properties based on the audio content:
 7.  **tempoCategory**: A descriptive category for the tempo (e.g., 'Andante', 'Uptempo Dance', 'Ballad').
 8.  **loudness**: The integrated loudness in LUFS. A typical value for a mastered track is between -14 and -8 LUFS.`;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: analysisSchema,
-    },
-  });
+  let text;
+  if (config.endpoint === 'google') {
+    const ai = new GoogleGenAI({ apiKey: config.apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: analysisSchema,
+      },
+    });
+    text = response.text.trim();
+  } else {
+    text = await callLocalLlm(prompt, analysisSchema, config.apiKey, config.endpoint);
+  }
 
-  const text = response.text.trim();
   try {
-    const parsed = JSON.parse(text);
+    const parsed = typeof text === 'string' ? JSON.parse(text) : text;
 
     // A simple pseudo-fingerprint based on a few key characteristics
     const fingerprintSource = `${parsed.key}-${parsed.bpm}-${parsed.instruments.join('')}-${parsed.loudness.toFixed(1)}`;
@@ -119,7 +159,7 @@ Generate the following properties based on the audio content:
   }
 };
 
-export const analyzeRecordedSnippet = async (audioDurationSeconds: number, contentType: 'beatbox' | 'melody'): Promise<SnippetAnalysisResult> => {
+export const analyzeRecordedSnippet = async (audioDurationSeconds: number, contentType: 'beatbox' | 'melody', config: ApiConfig): Promise<SnippetAnalysisResult> => {
   const prompt = `You are an expert music producer and audio analyst. You have just listened to a ${audioDurationSeconds.toFixed(1)}-second audio recording of a person ${contentType === 'beatbox' ? 'beatboxing a drum pattern' : 'humming a melody'}.
 
 Your task is to analyze its musical DNA. Focus on two aspects:
@@ -128,18 +168,24 @@ Your task is to analyze its musical DNA. Focus on two aspects:
 
 Provide the analysis in the specified JSON format.`;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: snippetAnalysisSchema,
-    },
-  });
+  let text;
+  if (config.endpoint === 'google') {
+    const ai = new GoogleGenAI({ apiKey: config.apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: snippetAnalysisSchema,
+      },
+    });
+    text = response.text.trim();
+  } else {
+    text = await callLocalLlm(prompt, snippetAnalysisSchema, config.apiKey, config.endpoint);
+  }
 
-  const text = response.text.trim();
   try {
-    const parsed = JSON.parse(text);
+    const parsed = typeof text === 'string' ? JSON.parse(text) : text;
     return parsed as SnippetAnalysisResult;
   } catch (e) {
     console.error("Failed to parse snippet analysis JSON:", e);
@@ -153,7 +199,7 @@ const getTopPreference = (weights: { [key: string]: number }): string | null => 
     return entries.sort((a, b) => b[1] - a[1])[0][0];
 };
 
-export const generateMidi = async (prompt: string, bpm?: number, preferences?: LearnedPreferences): Promise<MidiGenerationResult> => {
+export const generateMidi = async (prompt: string, config: ApiConfig, bpm?: number, preferences?: LearnedPreferences): Promise<MidiGenerationResult> => {
   let fullPrompt = `You are an expert musical composer AI. Generate a compelling musical idea based on the following prompt.
 Provide:
 1.  A creative text description of the generated musical idea.
@@ -189,20 +235,24 @@ Prompt: "${prompt}"`;
     }
   }
 
+  let text;
+  if (config.endpoint === 'google') {
+    const ai = new GoogleGenAI({ apiKey: config.apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: fullPrompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: midiGenerationSchema,
+      },
+    });
+    text = response.text.trim();
+  } else {
+    text = await callLocalLlm(fullPrompt, midiGenerationSchema, config.apiKey, config.endpoint);
+  }
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: fullPrompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: midiGenerationSchema,
-    },
-  });
-
-  const text = response.text.trim();
   try {
-    // Gracefully handle if the model returns a single `notes` array instead of the `tracks` structure.
-    const parsed = JSON.parse(text);
+    const parsed = typeof text === 'string' ? JSON.parse(text) : text;
     if (parsed.notes && !parsed.tracks) {
         parsed.tracks = [{ notes: parsed.notes }];
         delete parsed.notes;
@@ -214,7 +264,7 @@ Prompt: "${prompt}"`;
   }
 };
 
-export const generateAudio = async (prompt: string, preferences?: LearnedPreferences): Promise<string> => {
+export const generateAudio = async (prompt: string, config: ApiConfig, preferences?: LearnedPreferences): Promise<string> => {
   let voiceStyleInstruction = "Say the following with a cheerful, clear voice:";
 
   if (preferences) {
@@ -228,11 +278,15 @@ export const generateAudio = async (prompt: string, preferences?: LearnedPrefere
 
   const fullPrompt = `You are an AI voice assistant. ${voiceStyleInstruction} "Here is the audio I generated for you, based on your prompt: ${prompt}"`;
 
+  if (config.endpoint !== 'google') {
+      throw new Error("Audio generation is only supported with the Google Gemini API.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: config.apiKey });
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: fullPrompt }] }],
     config: {
-      // Fix: Use Modality.AUDIO enum instead of a string literal, as per the SDK guidelines.
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {
