@@ -1,0 +1,7 @@
+{
+  "name": "ART_UPDATE 0.1_of AI Music Studio",
+  "description": "An intelligent assistant to analyze audio files and generate new musical content from text prompts using AI. Features simulated audio analysis, MIDI idea generation, and text-to-speech audio creation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
