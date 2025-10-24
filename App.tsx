@@ -16,7 +16,7 @@ const App: React.FC = () => {
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [lastActivity, setLastActivity] = useState<Date | null>(null);
-  const [apiConfig, setApiConfig] = useState<ApiConfig>({ apiKey: '', endpoint: 'google' });
+  const [apiConfig, setApiConfig] = useState<ApiConfig>({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '', endpoint: 'google' });
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'failure'>('unknown');
 
   const learningSystem = useLearningSystem();
