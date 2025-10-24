@@ -1,0 +1,109 @@
+{
+  "learningSystem": {
+    "isEnabled": true,
+    "preferences": {
+      "STYLE": {
+        "jazz": 0.8,
+        "rock": 0.6,
+        "electronic": 0.9
+      },
+      "MOOD": {
+        "energetic": 0.9,
+        "calm": 0.3,
+        "dramatic": 0.7
+      },
+      "KEY": {
+        "c major": 0.7,
+        "g major": 0.5,
+        "f minor": 0.8
+      },
+      "INSTRUMENT": {
+        "piano": 0.9,
+        "guitar": 0.7,
+        "synthesizer": 0.8
+      },
+      "HUMANIZATION": {
+        "swing": 0.8,
+        "tight": 0.4,
+        "humanized": 0.9
+      },
+      "PATTERN": {
+        "complex rhythm": 0.6,
+        "simple rhythm": 0.8,
+        "syncopated": 0.7
+      }
+    },
+    "sampleCount": 25,
+    "confidence": 50
+  },
+  "sessionLibrary": [
+    {
+      "id": "analysis-1234567890",
+      "type": "analysis",
+      "name": "jazz_piano_sample.wav",
+      "timestamp": "2025-10-21T23:11:14.082Z",
+      "result": {
+        "bpm": 120,
+        "key": "C Major",
+        "mood": "Energetic, Happy",
+        "genre": "Jazz",
+        "chords": [
+          "C",
+          "F",
+          "G",
+          "Am"
+        ],
+        "instruments": [
+          "Piano",
+          "Bass",
+          "Drums"
+        ],
+        "tempoCategory": "Moderato",
+        "loudness": -12.5,
+        "fingerprint": "abc123def456"
+      }
+    },
+    {
+      "id": "generation-1234567891",
+      "type": "generation",
+      "name": "Generated Jazz Progression",
+      "prompt": "Create a jazz piano progression",
+      "timestamp": "2025-10-21T23:11:14.086Z",
+      "result": {
+        "description": "A smooth jazz piano progression with walking bass",
+        "tracks": [
+          {
+            "trackName": "Piano",
+            "notes": [
+              {
+                "note": 60,
+                "velocity": 80,
+                "time": 0,
+                "duration": 0.5
+              },
+              {
+                "note": 64,
+                "velocity": 75,
+                "time": 0.5,
+                "duration": 0.5
+              }
+            ]
+          }
+        ],
+        "bpm": 120
+      }
+    }
+  ],
+  "lastActivity": "2025-10-21T23:11:14.086Z",
+  "processedFiles": [
+    "jazz_piano_sample.wav",
+    "rock_guitar_riff.mp3",
+    "electronic_beat.mid"
+  ],
+  "apiConfig": {
+    "apiKey": "test-api-key-12345",
+    "endpoint": "google"
+  },
+  "timestamp": "2025-10-21T23:11:14.086Z",
+  "version": "2.0"
+}

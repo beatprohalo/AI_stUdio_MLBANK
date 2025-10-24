@@ -1,0 +1,35 @@
+{
+  "learningSystem": {
+    "isEnabled": true,
+    "preferences": {
+      "STYLE": {
+        "jazz": 0.8,
+        "rock": 0.6
+      },
+      "MOOD": {
+        "energetic": 0.9,
+        "calm": 0.3
+      },
+      "KEY": {
+        "c major": 0.7,
+        "g major": 0.5
+      },
+      "INSTRUMENT": {
+        "piano": 0.9,
+        "guitar": 0.7
+      },
+      "HUMANIZATION": {
+        "swing": 0.8,
+        "tight": 0.4
+      },
+      "PATTERN": {
+        "complex rhythm": 0.6,
+        "simple rhythm": 0.8
+      }
+    },
+    "sampleCount": 15,
+    "confidence": 30
+  },
+  "timestamp": "2025-10-21T22:19:25.210Z",
+  "version": "1.0"
+}
