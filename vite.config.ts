@@ -3,11 +3,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  server: {
-    port: 3000,
-    host: '0.0.0.0',
-    strictPort: true, // Don't try other ports
-  },
   plugins: [react()],
   resolve: {
     alias: {
@@ -27,11 +22,26 @@ export default defineConfig({
   define: {
     // Fix for Electron security warnings and env.mjs errors
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-    'process.env': '{}',
+    'process.env': JSON.stringify(process.env),
+    'process': JSON.stringify({
+      env: process.env,
+      platform: process.platform,
+      version: process.version
+    }),
   },
   optimizeDeps: {
     // Optimize dependencies to prevent module resolution issues
     include: ['react', 'react-dom'],
+    exclude: ['@google/genai'],
+  },
+  server: {
+    port: 3000,
+    host: '0.0.0.0',
+    strictPort: true, // Don't try other ports
+    fs: {
+      // Allow serving files from one level up to the project root
+      allow: ['..']
+    }
   },
   esbuild: {
     // Remove console logs in production
