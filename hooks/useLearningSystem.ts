@@ -30,14 +30,24 @@ const getInitialState = (): LearningSystemState => {
         const stored = window.localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            // Basic validation and migration for older states
             if (parsed.preferences && typeof parsed.sampleCount === 'number') {
-                // Ensure new dimensions exist
-                parsed.preferences[MusicalDimension.HUMANIZATION] = parsed.preferences[MusicalDimension.HUMANIZATION] || {};
-                parsed.preferences[MusicalDimension.PATTERN] = parsed.preferences[MusicalDimension.PATTERN] || {};
+                const migratedPreferences = {
+                    ...INITIAL_PREFERENCES,
+                    ...parsed.preferences,
+                };
+
+                // Deep merge to ensure all dimensions are present
+                for (const key in INITIAL_PREFERENCES) {
+                    const dimension = key as MusicalDimension;
+                    migratedPreferences[dimension] = {
+                        ...INITIAL_PREFERENCES[dimension],
+                        ...(parsed.preferences[dimension] || {}),
+                    };
+                }
 
                 return {
                     ...parsed,
+                    preferences: migratedPreferences,
                     confidence: Math.min(100, (parsed.sampleCount / MAX_CONFIDENCE_SAMPLES) * 100),
                 };
             }
