@@ -22,14 +22,8 @@ const AnalysisCharts: React.FC<AnalysisChartsProps> = ({ analysisData }) => {
 
     // Wait for Chart.js to be available
     if (typeof Chart === 'undefined') {
-      console.warn('Chart.js not loaded yet, retrying...');
-      const timer = setTimeout(() => {
-        if (typeof Chart !== 'undefined') {
-          // Retry after Chart.js loads
-          window.location.reload();
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
+      console.warn('Chart.js not loaded yet. Please ensure the Chart.js script is loaded.');
+      return;
     }
 
     // Cleanup previous charts before creating new ones to prevent memory leaks
