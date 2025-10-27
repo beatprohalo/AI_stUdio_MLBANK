@@ -94,27 +94,43 @@ export const useLearningSystem = () => {
         }
     }, [state.isEnabled]);
 
-    const updatePreferences = useCallback((dimension: MusicalDimension, keyword: string, action: FeedbackAction) => {
-        setState(s => {
-            const newPrefs = { ...s.preferences };
-            const weights: PreferenceWeights = { ...newPrefs[dimension] };
-            const currentWeight = weights[keyword] || 0.1;
+    const handleFeedback = useCallback((description: string, action: FeedbackAction) => {
+        if (!state.isEnabled) return;
 
-            let newWeight = currentWeight;
-            if (action === FeedbackAction.LIKE || action === FeedbackAction.DOWNLOAD) {
-                newWeight += LEARNING_RATE;
-            } else if (action === FeedbackAction.DISLIKE) {
-                newWeight -= LEARNING_RATE;
+        const lowercasedDescription = description.toLowerCase();
+
+        setState(s => {
+            const newPrefs = JSON.parse(JSON.stringify(s.preferences));
+            let keywordMatches = 0;
+
+            Object.entries(KEYWORD_MAP).forEach(([dimensionStr, keywords]) => {
+                const dimension = dimensionStr as MusicalDimension;
+                keywords.forEach(keyword => {
+                    const keywordRegex = new RegExp(`\\b${keyword.replace(/ /g, '\\s+')}\\b`);
+                    if (keywordRegex.test(lowercasedDescription)) {
+                        keywordMatches++;
+                        const weights: PreferenceWeights = newPrefs[dimension];
+                        const currentWeight = weights[keyword] || 0.1;
+
+                        let newWeight = currentWeight;
+                        if (action === FeedbackAction.LIKE || action === FeedbackAction.DOWNLOAD) {
+                            newWeight += LEARNING_RATE;
+                        } else if (action === FeedbackAction.DISLIKE) {
+                            newWeight -= LEARNING_RATE;
+                        } else if (action === FeedbackAction.REGENERATE) {
+                            newWeight -= LEARNING_RATE / 2;
+                        }
+
+                        weights[keyword] = Math.max(0.1, Math.min(1.0, newWeight));
+                    }
+                });
+            });
+
+            if (keywordMatches === 0) {
+                return s;
             }
-            // REGENERATE is a milder dislike
-            else if (action === FeedbackAction.REGENERATE) {
-                newWeight -= LEARNING_RATE / 2;
-            }
-            
-            weights[keyword] = Math.max(0.1, Math.min(1.0, newWeight)); // Clamp weight
-            newPrefs[dimension] = weights;
-            
-            const newSampleCount = s.sampleCount + 1;
+
+            const newSampleCount = s.sampleCount + keywordMatches;
 
             return {
                 ...s,
@@ -123,23 +139,7 @@ export const useLearningSystem = () => {
                 confidence: Math.min(100, (newSampleCount / MAX_CONFIDENCE_SAMPLES) * 100),
             };
         });
-    }, []);
-    
-    const handleFeedback = useCallback((description: string, action: FeedbackAction) => {
-        if (!state.isEnabled) return;
-
-        const lowercasedDescription = description.toLowerCase();
-        
-        Object.entries(KEYWORD_MAP).forEach(([dimension, keywords]) => {
-            keywords.forEach(keyword => {
-                const keywordRegex = new RegExp(`\\b${keyword.replace(/ /g, '\\s+')}\\b`);
-                if (keywordRegex.test(lowercasedDescription)) {
-                    updatePreferences(dimension as MusicalDimension, keyword, action);
-                }
-            });
-        });
-
-    }, [state.isEnabled, updatePreferences]);
+    }, [state.isEnabled]);
 
     const handleBulkFeedback = useCallback((descriptions: string[], action: FeedbackAction) => {
         if (!state.isEnabled || descriptions.length === 0) return;
@@ -216,12 +216,12 @@ export const useLearningSystem = () => {
                 const keywordRegex = new RegExp(`\\b${keyword.replace(/ /g, '\\s+')}\\b`);
                 if (keywordRegex.test(lowercasedText)) {
                     // We treat this as a strong "like"
-                    updatePreferences(dimension, keyword, FeedbackAction.LIKE);
+                    handleFeedback(keyword, FeedbackAction.LIKE);
                 }
             });
         });
 
-    }, [state.isEnabled, updatePreferences]);
+    }, [state.isEnabled, handleFeedback]);
 
 
     return {

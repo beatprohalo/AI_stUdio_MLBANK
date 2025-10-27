@@ -5,9 +5,41 @@ import { LearningSystemState, MusicalDimension } from '../types';
 
 const STORAGE_KEY = 'aiMusicStudioLearningSystem';
 
+import { vi } from 'vitest';
+
 describe('useLearningSystem', () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    const localStorageMock = (() => {
+      let store: { [key: string]: string } = {};
+      return {
+        getItem: (key: string) => store[key] || null,
+        setItem: (key: string, value: string) => {
+          store[key] = value.toString();
+        },
+        clear: () => {
+          store = {};
+        },
+      };
+    })();
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+  });
+
+
+  it('should batch state updates', () => {
+    const { result } = renderHook(() => useLearningSystem());
+    const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
+
+    act(() => {
+      result.current.toggleLearning();
+    });
+
+    act(() => {
+      result.current.handleFeedback('A jazz piece with a happy mood', 'like');
+    });
+
+    expect(setItemSpy).toHaveBeenCalledTimes(2);
+
+    setItemSpy.mockRestore();
   });
 
   it('should correctly migrate old state from localStorage', () => {
